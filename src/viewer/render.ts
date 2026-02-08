@@ -369,6 +369,26 @@ function createPointsFromJsonPositionBase64(path: ComposedObject[]) {
     return createPoints(geometry, colors_base64);
 }
 
+function createCubeFromJson(path: ComposedObject[]) {
+  const size = path[0].attributes["usd::usdgeom::cube::size"];
+  const geometry = new THREE.BoxGeometry(size, size, size);
+  
+  const m = createMaterialFromParent(path);
+  const material = new THREE.MeshLambertMaterial({ ...m });
+
+  return new THREE.Mesh(geometry, material);
+}
+
+function createSphereFromJson(path: ComposedObject[]) {
+  const radius = path[0].attributes["usd::usdgeom::sphere::radius"];
+  const geometry = new THREE.SphereGeometry(radius, 32, 16);
+  
+  const m = createMaterialFromParent(path);
+  const material = new THREE.MeshLambertMaterial({ ...m });
+
+  return new THREE.Mesh(geometry, material);
+}
+
 function traverseTree(path: ComposedObject[], parent, pathMapping) {
     const node = path[0];
     let elem: any = new THREE.Group();
@@ -385,6 +405,14 @@ function traverseTree(path: ComposedObject[], parent, pathMapping) {
     else if (HasAttr(node, "usd::usdgeom::basiscurves::points"))
     {
         elem = createCurveFromJson(path);
+    }
+    else if (HasAttr(node, "usd::usdgeom::cube::size"))
+    {
+        elem = createCubeFromJson(path);
+    }
+    else if (HasAttr(node, "usd::usdgeom::sphere::radius"))
+    {
+        elem = createSphereFromJson(path);
     }
     // point cloud data types:
     else if (HasAttr(node, "pcd::base64"))
@@ -435,6 +463,8 @@ const icons = {
     'usd::usdgeom::mesh::points': 'deployed_code', 
     'usd::usdgeom::basiscurves::points': 'line_curve',
     'usd::usdshade::material::outputs::surface.connect': 'line_style',
+    'usd::usdgeom::cube::size': 'check_box_outline_blank',
+    'usd::usdgeom::sphere::radius': 'radio_button_unchecked',
     'pcd::base64': 'grain',
     'points::array::positions': 'grain',
     'points::base64::positions': 'grain',

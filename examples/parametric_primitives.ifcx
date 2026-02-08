@@ -1,0 +1,61 @@
+{
+  "header": {
+    "id": "parametric-demo",
+    "version": "0.0.1",
+    "author": "Trae",
+    "timestamp": "2026-02-08T15:00:00Z"
+  },
+  "imports": [],
+  "schemas": {},
+  "data": [
+    {
+      "path": "root",
+      "children": {
+        "Cube1": "cube-1-uuid",
+        "Sphere1": "sphere-1-uuid"
+      }
+    },
+    {
+      "path": "cube-1-uuid",
+      "attributes": {
+        "usd::usdgeom::cube::size": 2.0,
+        "bsi::ifc::material": {
+          "code": "CONCRETE",
+          "uri": "https://identifier.buildingsmart.org/uri/fish/midas-materials/26/class/CONCRETE"
+        },
+        "bsi::ifc::presentation::diffuseColor": [
+          0.8,
+          0.2,
+          0.2
+        ],
+        "usd::xformop::transform": [
+          [1, 0, 0, 0],
+          [0, 1, 0, 0],
+          [0, 0, 1, 0],
+          [0, 0, 0, 1]
+        ]
+      }
+    },
+    {
+      "path": "sphere-1-uuid",
+      "attributes": {
+        "usd::usdgeom::sphere::radius": 1.5,
+        "bsi::ifc::material": {
+          "code": "STEEL",
+          "uri": "https://identifier.buildingsmart.org/uri/fish/midas-materials/26/class/STEEL"
+        },
+        "bsi::ifc::presentation::diffuseColor": [
+          0.2,
+          0.2,
+          0.8
+        ],
+        "usd::xformop::transform": [
+          [1, 0, 0, 0],
+          [0, 1, 0, 0],
+          [0, 0, 1, 0],
+          [4, 0, 0, 1]
+        ]
+      }
+    }
+  ]
+}
