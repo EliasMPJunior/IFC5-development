@@ -2,7 +2,7 @@
 
 clear
 
-docker compose -f docker/compose/docker-compose-dev.yaml up --force-recreate -d
+docker compose -f docker/compose/docker-compose-staging.yaml up --force-recreate --build -d
 
 
 
