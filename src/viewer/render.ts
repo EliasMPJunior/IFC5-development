@@ -369,26 +369,6 @@ function createPointsFromJsonPositionBase64(path: ComposedObject[]) {
     return createPoints(geometry, colors_base64);
 }
 
-function createCubeFromJson(path: ComposedObject[]) {
-  const size = path[0].attributes["usd::usdgeom::cube::size"];
-  const geometry = new THREE.BoxGeometry(size, size, size);
-  
-  const m = createMaterialFromParent(path);
-  const material = new THREE.MeshLambertMaterial({ ...m });
-
-  return new THREE.Mesh(geometry, material);
-}
-
-function createSphereFromJson(path: ComposedObject[]) {
-  const radius = path[0].attributes["usd::usdgeom::sphere::radius"];
-  const geometry = new THREE.SphereGeometry(radius, 32, 16);
-  
-  const m = createMaterialFromParent(path);
-  const material = new THREE.MeshLambertMaterial({ ...m });
-
-  return new THREE.Mesh(geometry, material);
-}
-
 function traverseTree(path: ComposedObject[], parent, pathMapping) {
     const node = path[0];
     let elem: any = new THREE.Group();
@@ -405,14 +385,6 @@ function traverseTree(path: ComposedObject[], parent, pathMapping) {
     else if (HasAttr(node, "usd::usdgeom::basiscurves::points"))
     {
         elem = createCurveFromJson(path);
-    }
-    else if (HasAttr(node, "usd::usdgeom::cube::size"))
-    {
-        elem = createCubeFromJson(path);
-    }
-    else if (HasAttr(node, "usd::usdgeom::sphere::radius"))
-    {
-        elem = createSphereFromJson(path);
     }
     // point cloud data types:
     else if (HasAttr(node, "pcd::base64"))
@@ -463,8 +435,6 @@ const icons = {
     'usd::usdgeom::mesh::points': 'deployed_code', 
     'usd::usdgeom::basiscurves::points': 'line_curve',
     'usd::usdshade::material::outputs::surface.connect': 'line_style',
-    'usd::usdgeom::cube::size': 'check_box_outline_blank',
-    'usd::usdgeom::sphere::radius': 'radio_button_unchecked',
     'pcd::base64': 'grain',
     'points::array::positions': 'grain',
     'points::base64::positions': 'grain',
@@ -651,4 +621,85 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
     renderer.render(scene, camera);
+}
+
+type TileDesc = { id: string, bbox: [number, number, number, number, number, number], uri: string };
+let tileSet: TileDesc[] = [];
+let loadedTiles = new Set<string>();
+let pendingTiles = new Set<string>();
+let streamingEnabled = false;
+let lastStreamCheck = 0;
+const streamIntervalMs = 200;
+
+function getCameraFrustum(): THREE.Frustum {
+    const frustum = new THREE.Frustum();
+    const projView = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projView);
+    return frustum;
+}
+
+async function loadTile(t: TileDesc) {
+    if (pendingTiles.has(t.id) || loadedTiles.has(t.id)) return;
+    pendingTiles.add(t.id);
+    try {
+        const res = await fetch(t.uri);
+        const json = await res.json();
+        await addModel(t.id, json as IfcxFile);
+        loadedTiles.add(t.id);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        pendingTiles.delete(t.id);
+    }
+}
+
+async function removeModel(name: string) {
+    const idx = datas.findIndex(([n, _]) => n === name);
+    if (idx >= 0) {
+        datas.splice(idx, 1);
+        createLayerDom();
+        await composeAndRender();
+    }
+}
+
+async function unloadTile(t: TileDesc) {
+    if (!loadedTiles.has(t.id)) return;
+    await removeModel(t.id);
+    loadedTiles.delete(t.id);
+}
+
+async function updateStreaming() {
+    if (!streamingEnabled || !camera || !scene) return;
+    const now = performance.now();
+    if (now - lastStreamCheck < streamIntervalMs) return;
+    lastStreamCheck = now;
+    const frustum = getCameraFrustum();
+    for (const t of tileSet) {
+        const b = new THREE.Box3(
+            new THREE.Vector3(t.bbox[0], t.bbox[1], t.bbox[2]),
+            new THREE.Vector3(t.bbox[3], t.bbox[4], t.bbox[5])
+        );
+        b.expandByScalar(5);
+        const visible = frustum.intersectsBox(b);
+        if (visible) {
+            if (!loadedTiles.has(t.id)) {
+                loadTile(t);
+            }
+        } else {
+            if (loadedTiles.has(t.id)) {
+                unloadTile(t);
+            }
+        }
+    }
+}
+
+export function setStreamingTiles(tiles: TileDesc[]) {
+    tileSet = tiles.slice();
+}
+
+export function enableStreaming(flag: boolean) {
+    streamingEnabled = flag;
+    if (controls && flag) {
+        controls.addEventListener('change', () => { updateStreaming(); });
+    }
 }
